@@ -1,0 +1,69 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>To start chatting, register first, then log in</a>.</p>
+    <a  asp-controller="Chat" asp-action="index"> GO Chat</a>
+</div>
+<h2>Chat</h2>
+
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" value="@ViewBag.Username" />
+        <input type="button" id="connectButton" value="Connect" />
+    </div>
+
+    <div id="chatContainer" style="display: none;">
+        <div id="userList"></div>
+        <div id="chatMessages"></div>
+        <div>
+            <input type="text" id="toUser" placeholder="Send to" />
+            <input type="text" id="message" placeholder="Type your message" />
+            <input type="button" id="sendButton" value="Send" />
+        </div>
+    </div>
+    <script>
+        $(function () {
+            var connection = new signalR.HubConnectionBuilder().withUrl(" http://localhost:5041/Chat").build();
+
+            connection.on("onConnected", function (connectionId, username, userList) {
+                $('#chatContainer').show();
+                $('#username').val(username);
+                $('#userList').html('');
+                $.each(userList, function (i, user) {
+                    $('#userList').append('<div>' + user + '</div>');
+                });
+            });
+
+            connection.on("onNewUserConnected", function (connectionId, username) {
+                $('#userList').append('<div>' + username + '</div>');
+            });
+
+            connection.on("receivePrivateMessage", function (fromUser, message) {
+                $('#chatMessages').append('<div>' + fromUser + ': ' + message + '</div>');
+            });
+
+            connection.on("onUserDisconnected", function (connectionId, username) {
+                $('#' + connectionId).remove();
+                $('#userList').append('<div>' + username + ' disconnected</div>');
+            });
+
+            $('#connectButton').click(function () {
+                var username = $('#username').val();
+                connection.invoke("Connect", username);
+            });
+
+            $('#sendButton').click(function () {
+                var toUser = $('#toUser').val();
+                var message = $('#message').val();
+                connection.invoke("SendMessage", toUser, message);
+                $('#message').val('').focus();
+            });
+
+            connection.start().catch(function (err) {
+                return console.error(err.toString());
+            });
+        });
+    </script>
